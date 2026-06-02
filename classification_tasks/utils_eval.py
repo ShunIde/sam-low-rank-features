@@ -87,7 +87,7 @@ def rob_err(batches, model, eps, pgd_alpha, scaler, attack_iters, n_restarts, rs
                                 verbose=verbose, linf_proj=linf_proj, l2_grad_update=l2_grad_update, cuda=cuda)
         else:
             pgd_delta = torch.zeros_like(X)
-        with torch.no_grad(), torch.cuda.amp.autocast(enabled=model.half_prec):
+        with torch.no_grad(), torch.amp.autocast(device_type='cuda', enabled=model.half_prec):
             output = model(X + pgd_delta)
             loss = loss_f(output, y)
 

@@ -11,6 +11,7 @@ import utils_train
 import data
 import models
 import losses
+import torch
 from collections import defaultdict
 from datetime import datetime
 from sam import SAM, perturb_weights_sam
@@ -227,7 +228,8 @@ def main():
         opt = torch.optim.Adam(model.parameters(), lr=args.lr_max, weight_decay=args.l2_reg)
     else:
         raise NotImplementedError('wrong args.optimizer')
-    scaler = torch.cuda.amp.GradScaler(enabled=model.half_prec)
+    scaler = torch.amp.GradScaler(device='cuda', enabled=model.half_prec)
+    #scaler = torch.cuda.amp.GradScaler(enabled=model.half_prec) drepciated syntax
     lr_schedule = utils_train.get_lr_schedule(args.lr_schedule, args.epochs, args.lr_max, args.warmup_factor, args.warmup_exp)
     ln_schedule = utils_train.get_lr_schedule(args.ln_schedule, args.epochs, args.sgd_p_label_noise)
 
@@ -316,7 +318,7 @@ def main():
                 if args.input_grad_reg_lambda > 0 or args.jac_reg_lambda > 0:  # to enable double backprop
                     delta.requires_grad = True
 
-                with torch.cuda.amp.autocast(enabled=model.half_prec): 
+                with torch.amp.autocast(device_type='cuda', enabled=model.half_prec):
                     if 'act_reg' not in args.model:
                         logits = model(x + delta)
                     else:
@@ -349,7 +351,7 @@ def main():
                     for i in range(n_cls):
                         grad_i = torch.autograd.grad(scaler.scale(logits[:, i].mean()), delta, create_graph=True)[0]
                         grad_i = grad_i / scaler.get_scale()
-                        with torch.cuda.amp.autocast(enabled=model.half_prec):
+                        with torch.amp.autocast(device_type='cuda', enabled=model.half_prec):
                             reg += args.jac_reg_lambda * torch.sum(grad_i ** 2)
 
                 utils_train.change_bn_mode(model, True)
